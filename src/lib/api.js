@@ -1,7 +1,7 @@
 // Shared API client for the product-owner portal.
 // Talks to the same backend as the tenant FE — distinguished by login role.
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://extraaedge-server.onrender.com/api/v1';
 
 const STORAGE = {
   ACCESS: 'po_access_token',
