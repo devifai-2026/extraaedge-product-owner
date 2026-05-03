@@ -17,6 +17,8 @@ export const tenantsApi = {
   // Soft-delete: marks deleted_at + status='cancelled'. The underlying
   // tenant_<slug> database is preserved for audit / recovery.
   delete: (id) => api.delete(`/platform/tenants/${id}`),
+  // Org hierarchy of the tenant — owner → managers → counsellors as a tree.
+  orgTree: (id) => api.get(`/platform/tenants/${id}/org-tree`),
 };
 
 export const platformUsersApi = {
