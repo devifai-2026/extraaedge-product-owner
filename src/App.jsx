@@ -5,6 +5,8 @@ import Tenants from './pages/Tenants.jsx';
 import CreateTenant from './pages/CreateTenant.jsx';
 import TenantDetails from './pages/TenantDetails.jsx';
 import AuditLog from './pages/AuditLog.jsx';
+import DangerRequestLog from './pages/DangerRequestLog.jsx';
+import LeadInspector from './pages/LeadInspector.jsx';
 import PlatformUsers from './pages/PlatformUsers.jsx';
 import Plans from './pages/Plans.jsx';
 import Profile from './pages/Profile.jsx';
@@ -23,6 +25,8 @@ export default function App() {
         <Route path="/tenants/new" element={<Protected><Layout><CreateTenant /></Layout></Protected>} />
         <Route path="/tenants/:id" element={<Protected><Layout><TenantDetails /></Layout></Protected>} />
         <Route path="/audit" element={<Protected><Layout><AuditLog /></Layout></Protected>} />
+        <Route path="/request-log" element={<Protected><Layout><DangerRequestLog /></Layout></Protected>} />
+        <Route path="/lead-inspector" element={<Protected><Layout><LeadInspector /></Layout></Protected>} />
         <Route path="/platform-users" element={<Protected><Layout><PlatformUsers /></Layout></Protected>} />
         <Route path="/plans" element={<Protected><Layout><Plans /></Layout></Protected>} />
         <Route path="/support-tickets" element={<Protected><Layout><SupportTickets /></Layout></Protected>} />

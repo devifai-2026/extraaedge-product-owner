@@ -31,6 +31,21 @@ export const auditLogApi = {
   list: (params) => api.get('/platform/audit-log', params),
 };
 
+// Danger Request Log — full cross-tenant API activity (product_owner only).
+export const requestLogApi = {
+  list: (params) => api.get('/platform/request-log', params),
+  get: (id) => api.get(`/platform/request-log/${id}`),
+  facets: () => api.get('/platform/request-log/facets'),
+};
+
+// Cross-tenant lead inspector.
+export const inspectApi = {
+  searchLeads: (tenantId, params) => api.get(`/platform/inspect/${tenantId}/leads`, params),
+  getLead: (tenantId, leadId) => api.get(`/platform/inspect/${tenantId}/leads/${leadId}`),
+  bulkImports: (tenantId, params) => api.get(`/platform/inspect/${tenantId}/bulk-imports`, params),
+  bulkImport: (tenantId, importId) => api.get(`/platform/inspect/${tenantId}/bulk-imports/${importId}`),
+};
+
 export const plansApi = {
   list: () => api.get('/platform/plans'),
 };

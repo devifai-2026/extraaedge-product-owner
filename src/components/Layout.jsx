@@ -6,6 +6,8 @@ const sidebarItems = [
   { to: '/platform-users', label: 'Platform users', icon: '👤' },
   { to: '/support-tickets', label: 'Support tickets', icon: '🎫' },
   { to: '/audit', label: 'Audit log', icon: '📋' },
+  { to: '/request-log', label: 'Danger Request Log', icon: '🚨' },
+  { to: '/lead-inspector', label: 'Lead Inspector', icon: '🔎' },
   { to: '/plans', label: 'Plans', icon: '💼' },
   { to: '/profile', label: 'My profile', icon: '⚙️' },
 ];
