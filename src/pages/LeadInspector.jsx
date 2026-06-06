@@ -87,6 +87,28 @@ function LeadDetail({ tenantId, lead, onOpenLead }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [restoringId, setRestoringId] = useState(null);
+  const [restoreMsg, setRestoreMsg] = useState('');
+
+  // Restore a soft-deleted/merged sibling: makes it the live lead and retires
+  // the current one, then opens the restored lead so the user lands on it.
+  const handleRestore = async (sib) => {
+    const ok = window.confirm(
+      `Make "${sib.name || sib.id}" (stage: ${sib.stage_name || '—'}, owner: ${sib.owner_name || 'unassigned'}) the LIVE lead?\n\n`
+      + `The current live duplicate for this phone will be retired (soft-deleted, recoverable). This swaps which record counsellors see.`,
+    );
+    if (!ok) return;
+    setRestoringId(sib.id); setRestoreMsg('');
+    try {
+      await inspectApi.restoreLead(tenantId, sib.id);
+      setRestoreMsg('Restored. Opening the lead…');
+      onOpenLead && onOpenLead(sib);
+    } catch (e) {
+      setRestoreMsg(e.message || 'Restore failed');
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   useEffect(() => {
     setLoading(true); setError('');
@@ -130,17 +152,28 @@ function LeadDetail({ tenantId, lead, onOpenLead }) {
             ⚠️ {siblings.length} other lead{siblings.length > 1 ? 's' : ''} for this same person (same phone / email / WhatsApp)
           </div>
           <div style={{ fontSize: 12, color: '#78350f', marginBottom: 8 }}>
-            The stage / owner you expect may live on one of these duplicates — a re-import or manual re-create spawns a separate record. Click one to open it.
+            The stage / owner you expect may live on one of these duplicates — a re-import or manual re-create spawns a separate record. Click one to open it, or restore a deleted one to make it the live lead.
           </div>
+          {restoreMsg && <div style={{ fontSize: 12, color: restoreMsg.includes('fail') ? '#b91c1c' : '#065f46', marginBottom: 8 }}>{restoreMsg}</div>}
           {siblings.map((s) => (
-            <div key={s.id} onClick={() => onOpenLead && onOpenLead(s)}
-              style={{ cursor: onOpenLead ? 'pointer' : 'default', background: '#fff', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 10px', marginBottom: 4, fontSize: 12 }}>
-              <b>{s.name || '—'}</b>
-              {s.deleted_at ? <Badge color="#b91c1c" bg="#fee2e2">deleted</Badge> : null}
-              {s.merged_into_id ? <Badge color="#6b7280" bg="#f3f4f6">merged</Badge> : null}
-              {' · '}stage: <b>{s.stage_name || '—'}</b>
-              {' · '}owner: <b>{s.owner_name || 'unassigned'}</b>{s.owner_email ? ` (${s.owner_email})` : ''}
-              {' · '}<span style={{ color: '#9ca3af' }}>{Number(s.assignment_count) || 0} owner change(s) · created {fmt(s.created_at)}</span>
+            <div key={s.id}
+              style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 10px', marginBottom: 4, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span onClick={() => onOpenLead && onOpenLead(s)} style={{ cursor: onOpenLead ? 'pointer' : 'default', flex: 1 }}>
+                <b>{s.name || '—'}</b>{' '}
+                {s.deleted_at ? <Badge color="#b91c1c" bg="#fee2e2">deleted</Badge> : null}
+                {s.merged_into_id ? <Badge color="#6b7280" bg="#f3f4f6">merged</Badge> : null}
+                {' · '}stage: <b>{s.stage_name || '—'}</b>
+                {' · '}owner: <b>{s.owner_name || 'unassigned'}</b>{s.owner_email ? ` (${s.owner_email})` : ''}
+                {' · '}<span style={{ color: '#9ca3af' }}>{Number(s.assignment_count) || 0} owner change(s) · created {fmt(s.created_at)}</span>
+              </span>
+              {(s.deleted_at || s.merged_into_id) && (
+                <button
+                  disabled={restoringId === s.id}
+                  onClick={() => handleRestore(s)}
+                  style={{ flexShrink: 0, padding: '4px 10px', fontSize: 11, fontWeight: 600, border: '1px solid #059669', background: restoringId === s.id ? '#a7f3d0' : '#059669', color: '#fff', borderRadius: 5, cursor: restoringId === s.id ? 'default' : 'pointer' }}>
+                  {restoringId === s.id ? 'Restoring…' : '♻ Make this the live lead'}
+                </button>
+              )}
             </div>
           ))}
         </div>

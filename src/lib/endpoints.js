@@ -44,6 +44,9 @@ export const inspectApi = {
   getLead: (tenantId, leadId) => api.get(`/platform/inspect/${tenantId}/leads/${leadId}`),
   bulkImports: (tenantId, params) => api.get(`/platform/inspect/${tenantId}/bulk-imports`, params),
   bulkImport: (tenantId, importId) => api.get(`/platform/inspect/${tenantId}/bulk-imports/${importId}`),
+  // Restore a soft-deleted/merged-away lead, retiring the live duplicate that
+  // blocks the phone-unique index. Returns { restored_lead_id, retired_lead_ids }.
+  restoreLead: (tenantId, leadId) => api.post(`/platform/inspect/${tenantId}/leads/${leadId}/restore`),
 };
 
 export const plansApi = {
