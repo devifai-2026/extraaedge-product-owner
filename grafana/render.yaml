@@ -1,0 +1,53 @@
+# Render Blueprint for the ExtraaEdge Grafana observability service.
+#
+# Deploy: in Render → New → Blueprint → point at this repo, or create a Docker
+# web service with Root Directory = grafana/. Set the datasource secrets
+# (GF_DS_PG_*) and, if you want, a fixed URL. The service reads the metrics_*
+# views in the system Postgres via the read-only grafana_ro role
+# (see grafana/sql/grafana_ro.sql).
+#
+# Anonymous Viewer + embedding are ON so the product-owner React app can iframe
+# panels with no separate Grafana login. Lock down network access at the Render
+# level if the metrics should not be world-viewable.
+services:
+  - type: web
+    name: extraaedge-grafana
+    runtime: docker
+    dockerfilePath: ./grafana/Dockerfile
+    dockerContext: ./grafana
+    branch: main
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      # --- Server / port (Render injects PORT) ---
+      - key: GF_SERVER_HTTP_PORT
+        fromService: { type: web, name: extraaedge-grafana, property: port }
+      - key: GF_SERVER_ROOT_URL
+        value: https://extraaedge-grafana.onrender.com
+      # --- Anonymous read-only access + embedding (for iframe in the portal) ---
+      - key: GF_AUTH_ANONYMOUS_ENABLED
+        value: "true"
+      - key: GF_AUTH_ANONYMOUS_ORG_ROLE
+        value: Viewer
+      - key: GF_SECURITY_ALLOW_EMBEDDING
+        value: "true"
+      - key: GF_SECURITY_COOKIE_SAMESITE
+        value: none
+      - key: GF_USERS_DEFAULT_THEME
+        value: light
+      # Admin login stays for management (change the password!).
+      - key: GF_SECURITY_ADMIN_USER
+        value: admin
+      - key: GF_SECURITY_ADMIN_PASSWORD
+        sync: false
+      # --- Datasource: system Postgres via grafana_ro (fill these in Render) ---
+      - key: GF_DS_PG_HOST
+        sync: false
+      - key: GF_DS_PG_PORT
+        value: "5432"
+      - key: GF_DS_PG_DB
+        sync: false
+      - key: GF_DS_PG_USER
+        value: grafana_ro
+      - key: GF_DS_PG_PASSWORD
+        sync: false

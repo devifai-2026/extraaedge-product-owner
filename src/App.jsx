@@ -11,6 +11,7 @@ import PlatformUsers from './pages/PlatformUsers.jsx';
 import Plans from './pages/Plans.jsx';
 import Profile from './pages/Profile.jsx';
 import SupportTickets from './pages/SupportTickets.jsx';
+import Analytics from './pages/Analytics.jsx';
 import { auth } from './lib/api';
 
 const Protected = ({ children }) => (auth.isAuthed() ? children : <Navigate to="/login" replace />);
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/platform-users" element={<Protected><Layout><PlatformUsers /></Layout></Protected>} />
         <Route path="/plans" element={<Protected><Layout><Plans /></Layout></Protected>} />
         <Route path="/support-tickets" element={<Protected><Layout><SupportTickets /></Layout></Protected>} />
+        <Route path="/analytics" element={<Protected><Layout><Analytics /></Layout></Protected>} />
         <Route path="/profile" element={<Protected><Layout><Profile /></Layout></Protected>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

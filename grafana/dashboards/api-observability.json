@@ -1,0 +1,76 @@
+{
+  "uid": "api-observability",
+  "title": "API Observability",
+  "tags": ["extraaedge", "api"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "stat", "title": "Requests (range)", "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": null }] } } },
+      "targets": [{ "format": "table", "rawQuery": true, "rawSql": "SELECT count(*) AS \"Requests\" FROM metrics_requests WHERE created_at BETWEEN $__timeFrom() AND $__timeTo()", "refId": "A" }]
+    },
+    {
+      "type": "stat", "title": "Error rate", "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 2 }, { "color": "red", "value": 5 }] } } },
+      "targets": [{ "format": "table", "rawQuery": true, "rawSql": "SELECT round(100.0 * count(*) FILTER (WHERE is_error) / NULLIF(count(*),0), 2) AS \"Error rate\" FROM metrics_requests WHERE created_at BETWEEN $__timeFrom() AND $__timeTo()", "refId": "A" }]
+    },
+    {
+      "type": "stat", "title": "p95 latency (ms)", "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "fieldConfig": { "defaults": { "unit": "ms", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 500 }, { "color": "red", "value": 1500 }] } } },
+      "targets": [{ "format": "table", "rawQuery": true, "rawSql": "SELECT percentile_disc(0.95) WITHIN GROUP (ORDER BY duration_ms) AS \"p95\" FROM metrics_requests WHERE created_at BETWEEN $__timeFrom() AND $__timeTo()", "refId": "A" }]
+    },
+    {
+      "type": "stat", "title": "5xx (range)", "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
+      "targets": [{ "format": "table", "rawQuery": true, "rawSql": "SELECT count(*) AS \"5xx\" FROM metrics_requests WHERE status_code >= 500 AND created_at BETWEEN $__timeFrom() AND $__timeTo()", "refId": "A" }]
+    },
+    {
+      "type": "timeseries", "title": "API latency (p50 / p95 / p99)", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 } } },
+      "targets": [{ "format": "time_series", "rawQuery": true, "rawSql": "SELECT ts AS time, p50_ms AS \"p50\", p95_ms AS \"p95\", p99_ms AS \"p99\" FROM metrics_requests_1m WHERE ts BETWEEN $__timeFrom() AND $__timeTo() ORDER BY ts", "refId": "A" }]
+    },
+    {
+      "type": "timeseries", "title": "Throughput (requests/min) & errors", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 } } },
+      "targets": [{ "format": "time_series", "rawQuery": true, "rawSql": "SELECT ts AS time, requests AS \"requests\", errors AS \"errors\" FROM metrics_requests_1m WHERE ts BETWEEN $__timeFrom() AND $__timeTo() ORDER BY ts", "refId": "A" }]
+    },
+    {
+      "type": "timeseries", "title": "Status classes over time", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80, "lineWidth": 0 } } },
+      "targets": [{ "format": "time_series", "rawQuery": true, "rawSql": "SELECT ts AS time, status_class AS metric, requests AS value FROM metrics_status_1m WHERE ts BETWEEN $__timeFrom() AND $__timeTo() ORDER BY ts", "refId": "A" }]
+    },
+    {
+      "type": "table", "title": "Slowest endpoints (p95, last range)", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "targets": [{ "format": "table", "rawQuery": true, "rawSql": "SELECT method AS \"Method\", endpoint AS \"Endpoint\", sum(requests) AS \"Requests\", max(p95_ms) AS \"p95 ms\", sum(errors) AS \"Errors\" FROM metrics_endpoint_1h WHERE ts BETWEEN $__timeFrom() AND $__timeTo() GROUP BY 1,2 ORDER BY \"p95 ms\" DESC NULLS LAST LIMIT 20", "refId": "A" }]
+    },
+    {
+      "type": "timeseries", "title": "Active tenants (requests/hour)", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 } } },
+      "targets": [{ "format": "time_series", "rawQuery": true, "rawSql": "SELECT ts AS time, tenant_slug AS metric, requests AS value FROM metrics_tenant_activity_1h WHERE ts BETWEEN $__timeFrom() AND $__timeTo() ORDER BY ts", "refId": "A" }]
+    },
+    {
+      "type": "table", "title": "Tenants", "gridPos": { "h": 8, "w": 6, "x": 12, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "targets": [{ "format": "table", "rawQuery": true, "rawSql": "SELECT name AS \"Tenant\", status AS \"Status\", plan_name AS \"Plan\" FROM metrics_tenants ORDER BY created_at DESC", "refId": "A" }]
+    },
+    {
+      "type": "table", "title": "Open support tickets", "gridPos": { "h": 8, "w": 6, "x": 18, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "extraaedge_metrics" },
+      "targets": [{ "format": "table", "rawQuery": true, "rawSql": "SELECT priority AS \"Priority\", status AS \"Status\", tickets AS \"Count\" FROM metrics_support_open ORDER BY tickets DESC", "refId": "A" }]
+    }
+  ]
+}

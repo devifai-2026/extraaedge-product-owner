@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { auth, authApi } from '../lib/endpoints';
 
 const sidebarItems = [
+  { to: '/analytics', label: 'Analytics', icon: '📊' },
   { to: '/tenants', label: 'Tenants', icon: '🏢' },
   { to: '/platform-users', label: 'Platform users', icon: '👤' },
   { to: '/support-tickets', label: 'Support tickets', icon: '🎫' },

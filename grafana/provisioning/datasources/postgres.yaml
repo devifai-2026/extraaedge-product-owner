@@ -1,0 +1,22 @@
+# Grafana datasource — the system Postgres, read via the grafana_ro role.
+# Connection details come from env vars set on the Grafana Render service
+# (so no secrets live in git):
+#   GF_DS_PG_HOST, GF_DS_PG_PORT, GF_DS_PG_DB, GF_DS_PG_USER, GF_DS_PG_PASSWORD
+apiVersion: 1
+
+datasources:
+  - name: ExtraaEdge-Metrics
+    type: postgres
+    uid: extraaedge_metrics
+    access: proxy
+    url: ${GF_DS_PG_HOST}:${GF_DS_PG_PORT}
+    user: ${GF_DS_PG_USER}
+    isDefault: true
+    jsonData:
+      database: ${GF_DS_PG_DB}
+      sslmode: require          # Render Postgres requires SSL
+      postgresVersion: 1500
+      timescaledb: false
+    secureJsonData:
+      password: ${GF_DS_PG_PASSWORD}
+    editable: false
