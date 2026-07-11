@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { requestLogApi } from '../lib/endpoints';
+import MetricsDashboard from '../components/MetricsDashboard';
 
 // Local date (YYYY-MM-DD) → ISO start/end of that day.
 const dayStartISO = (d) => (d ? new Date(`${d}T00:00:00`).toISOString() : undefined);
@@ -105,6 +106,7 @@ function Row({ entry }) {
 export default function DangerRequestLog() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showGraphs, setShowGraphs] = useState(true);
   const [error, setError] = useState('');
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -156,6 +158,15 @@ export default function DangerRequestLog() {
       <p style={{ marginTop: -8, color: '#6b7280', fontSize: 13 }}>
         Full cross-tenant API activity — every request with its account, payload, response & status. Use this to trace client-escalated bugs (e.g. failed bulk uploads).
       </p>
+
+      {/* Live activity graphs (product-wide, all tenants) */}
+      <div style={{ marginBottom: 16 }}>
+        <button onClick={() => setShowGraphs((v) => !v)}
+          style={{ border: '1px solid #e5e7eb', background: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: '#334155', marginBottom: showGraphs ? 12 : 0 }}>
+          {showGraphs ? '▾ Hide activity graphs' : '▸ Show activity graphs'}
+        </button>
+        {showGraphs && <MetricsDashboard compact />}
+      </div>
 
       {/* Filters */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 14 }}>

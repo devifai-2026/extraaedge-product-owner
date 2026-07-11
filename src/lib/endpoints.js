@@ -36,6 +36,8 @@ export const requestLogApi = {
   list: (params) => api.get('/platform/request-log', params),
   get: (id) => api.get(`/platform/request-log/${id}`),
   facets: () => api.get('/platform/request-log/facets'),
+  // Cross-tenant API activity metrics for the live graphs.
+  metrics: (window) => api.get('/platform/request-log/metrics', window ? { window } : undefined),
 };
 
 // Cross-tenant lead inspector.
