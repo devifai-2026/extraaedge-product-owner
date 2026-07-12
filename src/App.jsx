@@ -12,6 +12,7 @@ import Plans from './pages/Plans.jsx';
 import Profile from './pages/Profile.jsx';
 import SupportTickets from './pages/SupportTickets.jsx';
 import Analytics from './pages/Analytics.jsx';
+import RecorderMetrics from './pages/RecorderMetrics.jsx';
 import { auth } from './lib/api';
 
 const Protected = ({ children }) => (auth.isAuthed() ? children : <Navigate to="/login" replace />);
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/audit" element={<Protected><Layout><AuditLog /></Layout></Protected>} />
         <Route path="/request-log" element={<Protected><Layout><DangerRequestLog /></Layout></Protected>} />
         <Route path="/lead-inspector" element={<Protected><Layout><LeadInspector /></Layout></Protected>} />
+        <Route path="/recorder-metrics" element={<Protected><Layout><RecorderMetrics /></Layout></Protected>} />
         <Route path="/platform-users" element={<Protected><Layout><PlatformUsers /></Layout></Protected>} />
         <Route path="/plans" element={<Protected><Layout><Plans /></Layout></Protected>} />
         <Route path="/support-tickets" element={<Protected><Layout><SupportTickets /></Layout></Protected>} />

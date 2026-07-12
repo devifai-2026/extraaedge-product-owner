@@ -55,6 +55,11 @@ export const plansApi = {
   list: () => api.get('/platform/plans'),
 };
 
+// Recorder-app rollout: APK account setups + per-number upload counts.
+export const recorderMetricsApi = {
+  get: () => api.get('/platform/recorder-metrics'),
+};
+
 export const supportTicketsApi = {
   list: (params) => api.get('/platform/tickets', params),
   get: (id) => api.get(`/platform/tickets/${id}`),
