@@ -51,6 +51,18 @@ export const inspectApi = {
   restoreLead: (tenantId, leadId) => api.post(`/platform/inspect/${tenantId}/leads/${leadId}/restore`),
 };
 
+// Cross-tenant WhatsApp console: view any tenant's messages, edit its config/
+// webhook, manage its templates.
+export const platformWhatsappApi = {
+  settings: (tenantId) => api.get(`/platform/whatsapp/${tenantId}/settings`),
+  saveSettings: (tenantId, body) => api.put(`/platform/whatsapp/${tenantId}/settings`, body),
+  chats: (tenantId) => api.get(`/platform/whatsapp/${tenantId}/chats`),
+  messages: (tenantId, phone) => api.get(`/platform/whatsapp/${tenantId}/chats/${encodeURIComponent(phone)}/messages`),
+  templates: (tenantId) => api.get(`/platform/whatsapp/${tenantId}/templates`),
+  addTemplate: (tenantId, body) => api.post(`/platform/whatsapp/${tenantId}/templates`, body),
+  deleteTemplate: (tenantId, id) => api.delete(`/platform/whatsapp/${tenantId}/templates/${id}`),
+};
+
 export const plansApi = {
   list: () => api.get('/platform/plans'),
 };

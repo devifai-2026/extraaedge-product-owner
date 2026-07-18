@@ -7,6 +7,7 @@ import TenantDetails from './pages/TenantDetails.jsx';
 import AuditLog from './pages/AuditLog.jsx';
 import DangerRequestLog from './pages/DangerRequestLog.jsx';
 import LeadInspector from './pages/LeadInspector.jsx';
+import WhatsAppConsole from './pages/WhatsAppConsole.jsx';
 import PlatformUsers from './pages/PlatformUsers.jsx';
 import Plans from './pages/Plans.jsx';
 import Profile from './pages/Profile.jsx';
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/audit" element={<Protected><Layout><AuditLog /></Layout></Protected>} />
         <Route path="/request-log" element={<Protected><Layout><DangerRequestLog /></Layout></Protected>} />
         <Route path="/lead-inspector" element={<Protected><Layout><LeadInspector /></Layout></Protected>} />
+        <Route path="/whatsapp" element={<Protected><Layout><WhatsAppConsole /></Layout></Protected>} />
         <Route path="/recorder-metrics" element={<Protected><Layout><RecorderMetrics /></Layout></Protected>} />
         <Route path="/platform-users" element={<Protected><Layout><PlatformUsers /></Layout></Protected>} />
         <Route path="/plans" element={<Protected><Layout><Plans /></Layout></Protected>} />

@@ -9,6 +9,7 @@ const sidebarItems = [
   { to: '/audit', label: 'Audit log', icon: '📋' },
   { to: '/request-log', label: 'Danger Request Log', icon: '🚨' },
   { to: '/lead-inspector', label: 'Lead Inspector', icon: '🔎' },
+  { to: '/whatsapp', label: 'WhatsApp', icon: '💬' },
   { to: '/recorder-metrics', label: 'Recorder App', icon: '📱' },
   { to: '/plans', label: 'Plans', icon: '💼' },
   { to: '/profile', label: 'My profile', icon: '⚙️' },
