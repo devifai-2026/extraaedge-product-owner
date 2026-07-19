@@ -33,6 +33,7 @@ function Messages({ tenantId }) {
                 <span style={{ fontSize: 11, color: '#9ca3af' }}>{fmt(c.last_at)}</span>
               </div>
               <div style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last_body}</div>
+              {c.lead_owner_name && <div style={{ fontSize: 11, color: '#94a3b8' }}>👤 {c.lead_owner_name}</div>}
             </div>
           ))}
       </div>
