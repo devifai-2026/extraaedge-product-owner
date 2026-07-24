@@ -77,6 +77,17 @@ function Config({ tenantId }) {
     finally { setBusy(false); }
   };
 
+  const removeConfig = async () => {
+    if (!window.confirm("Delete this tenant's WhatsApp config? The keys will be cleared and the tenant's admin panel will show WhatsApp as not configured.")) return;
+    setBusy(true); setMsg('');
+    try {
+      await platformWhatsappApi.deleteSettings(tenantId);
+      setForm({ enabled: false, app_key: '', auth_key: '', device_id: '', business_phone: '' });
+      setMsg('Config deleted ✓');
+    } catch (e) { setMsg(e.message || 'Delete failed'); }
+    finally { setBusy(false); }
+  };
+
   if (!form) return <div style={{ color: '#9ca3af' }}>Loading…</div>;
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   return (
@@ -92,6 +103,7 @@ function Config({ tenantId }) {
       </div>
       <div style={{ marginTop: 14 }}>
         <button onClick={save} disabled={busy} style={{ padding: '8px 16px', background: '#0f172a', color: '#fff', border: 0, borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>{busy ? 'Saving…' : 'Save config'}</button>
+        <button onClick={removeConfig} disabled={busy} style={{ marginLeft: 10, padding: '8px 16px', background: '#fff', color: '#dc2626', border: '1px solid #dc2626', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>Delete config</button>
         {msg && <span style={{ marginLeft: 12, fontSize: 13, color: '#16a34a' }}>{msg}</span>}
       </div>
       {webhook && (

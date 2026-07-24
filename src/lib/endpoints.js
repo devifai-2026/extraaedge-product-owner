@@ -56,6 +56,7 @@ export const inspectApi = {
 export const platformWhatsappApi = {
   settings: (tenantId) => api.get(`/platform/whatsapp/${tenantId}/settings`),
   saveSettings: (tenantId, body) => api.put(`/platform/whatsapp/${tenantId}/settings`, body),
+  deleteSettings: (tenantId) => api.delete(`/platform/whatsapp/${tenantId}/settings`),
   chats: (tenantId) => api.get(`/platform/whatsapp/${tenantId}/chats`),
   messages: (tenantId, phone) => api.get(`/platform/whatsapp/${tenantId}/chats/${encodeURIComponent(phone)}/messages`),
   templates: (tenantId) => api.get(`/platform/whatsapp/${tenantId}/templates`),
