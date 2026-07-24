@@ -9,7 +9,7 @@ export const isProd = env.PROD === true;
 export const API_BASE =
   env.VITE_API_BASE_URL
   || (isProd
-    ? 'https://extraaedge-server.onrender.com/api/v1'
+    ? 'https://admissioncrm.live/api/v1'
     : 'http://localhost:4000/api/v1');
 
 // Grafana observability service (embedded in the Analytics page). Override at
