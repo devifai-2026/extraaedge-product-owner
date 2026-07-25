@@ -32,6 +32,10 @@ export const auditLogApi = {
 };
 
 // Danger Request Log — full cross-tenant API activity (product_owner only).
+export const feedbackApi = {
+  list: () => api.get('/platform/feedback'),
+};
+
 export const requestLogApi = {
   list: (params) => api.get('/platform/request-log', params),
   get: (id) => api.get(`/platform/request-log/${id}`),

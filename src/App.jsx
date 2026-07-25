@@ -14,6 +14,7 @@ import Profile from './pages/Profile.jsx';
 import SupportTickets from './pages/SupportTickets.jsx';
 import Analytics from './pages/Analytics.jsx';
 import RecorderMetrics from './pages/RecorderMetrics.jsx';
+import Feedback from './pages/Feedback.jsx';
 import { auth } from './lib/api';
 
 const Protected = ({ children }) => (auth.isAuthed() ? children : <Navigate to="/login" replace />);
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/lead-inspector" element={<Protected><Layout><LeadInspector /></Layout></Protected>} />
         <Route path="/whatsapp" element={<Protected><Layout><WhatsAppConsole /></Layout></Protected>} />
         <Route path="/recorder-metrics" element={<Protected><Layout><RecorderMetrics /></Layout></Protected>} />
+        <Route path="/feedback" element={<Protected><Layout><Feedback /></Layout></Protected>} />
         <Route path="/platform-users" element={<Protected><Layout><PlatformUsers /></Layout></Protected>} />
         <Route path="/plans" element={<Protected><Layout><Plans /></Layout></Protected>} />
         <Route path="/support-tickets" element={<Protected><Layout><SupportTickets /></Layout></Protected>} />
