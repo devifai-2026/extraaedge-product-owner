@@ -66,6 +66,7 @@ export const platformWhatsappApi = {
   templates: (tenantId) => api.get(`/platform/whatsapp/${tenantId}/templates`),
   addTemplate: (tenantId, body) => api.post(`/platform/whatsapp/${tenantId}/templates`, body),
   deleteTemplate: (tenantId, id) => api.delete(`/platform/whatsapp/${tenantId}/templates/${id}`),
+  webhookLogs: (tenantId, params) => api.get(`/platform/whatsapp/${tenantId}/webhook-logs`, params),
 };
 
 export const plansApi = {

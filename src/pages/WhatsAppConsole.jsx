@@ -164,10 +164,92 @@ function Templates({ tenantId }) {
   );
 }
 
+// Raw inbound/outbound WhatsApp payloads (request + response) for debugging.
+function Webhooks({ tenantId }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dir, setDir] = useState(''); // '' | 'inbound' | 'outbound'
+  const [expanded, setExpanded] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    platformWhatsappApi.webhookLogs(tenantId, { direction: dir || undefined, limit: 200 })
+      .then((r) => setLogs(r?.data || []))
+      .catch(() => setLogs([]))
+      .finally(() => setLoading(false));
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [tenantId, dir]);
+
+  const pill = (text, bg, color) => (
+    <span style={{ background: bg, color, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999 }}>{text}</span>
+  );
+
+  return (
+    <div style={{ ...card, padding: 14 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
+          {[['', 'All'], ['inbound', 'Incoming'], ['outbound', 'Outgoing']].map(([v, label]) => (
+            <button key={v} onClick={() => setDir(v)} style={{ padding: '6px 12px', border: 0, cursor: 'pointer', background: dir === v ? '#0f172a' : '#fff', color: dir === v ? '#fff' : '#374151', fontSize: 12 }}>{label}</button>
+          ))}
+        </div>
+        <button onClick={load} style={{ padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 12 }}>↻ Refresh</button>
+        <span style={{ color: '#9ca3af', fontSize: 12 }}>{logs.length} events · last 30 days</span>
+      </div>
+
+      {loading && <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>Loading…</div>}
+      {!loading && logs.length === 0 && <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>No webhook events yet.</div>}
+
+      {!loading && logs.map((l) => {
+        const isIn = l.direction === 'inbound';
+        const open = expanded === l.id;
+        return (
+          <div key={l.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, marginBottom: 8, overflow: 'hidden' }}>
+            <div
+              onClick={() => setExpanded(open ? null : l.id)}
+              style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', cursor: 'pointer', background: open ? '#f8fafc' : '#fff' }}
+            >
+              {isIn ? pill('▼ IN', '#dcfce7', '#166534') : pill('▲ OUT', '#dbeafe', '#1e40af')}
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{l.event || '—'}</span>
+              {l.phone && <span style={{ fontSize: 12, color: '#6b7280' }}>{l.phone}</span>}
+              {l.direction === 'outbound' && l.status_code != null && pill(
+                `${l.status_code}${l.ok ? ' ✓' : ' ✗'}`,
+                l.ok ? '#dcfce7' : '#fee2e2', l.ok ? '#166534' : '#991b1b',
+              )}
+              {l.error && <span style={{ fontSize: 11, color: '#991b1b' }}>{l.error}</span>}
+              <span style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af' }}>{fmt(l.created_at)}</span>
+            </div>
+            {open && (
+              <div style={{ padding: 12, borderTop: '1px solid #e5e7eb', background: '#0f172a' }}>
+                {l.request_json && (
+                  <>
+                    <div style={{ color: '#93c5fd', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{isIn ? 'INBOUND PAYLOAD' : 'REQUEST'}</div>
+                    <pre style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 320, overflow: 'auto' }}>
+                      {JSON.stringify(l.request_json, null, 2)}
+                    </pre>
+                  </>
+                )}
+                {l.response_json && (
+                  <>
+                    <div style={{ color: '#86efac', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>RESPONSE</div>
+                    <pre style={{ margin: 0, color: '#e2e8f0', fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 320, overflow: 'auto' }}>
+                      {JSON.stringify(l.response_json, null, 2)}
+                    </pre>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function WhatsAppConsole() {
   const [tenants, setTenants] = useState([]);
   const [tenantId, setTenantId] = useState('');
-  const [tab, setTab] = useState('messages'); // messages | config | templates
+  const [tab, setTab] = useState('messages'); // messages | webhooks | config | templates
 
   useEffect(() => { tenantsApi.list({ limit: 200 }).then((r) => setTenants(r?.data || [])).catch(() => {}); }, []);
 
@@ -183,7 +265,7 @@ export default function WhatsAppConsole() {
         </select>
         {tenantId && (
           <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
-            {['messages', 'config', 'templates'].map((tb) => (
+            {['messages', 'webhooks', 'config', 'templates'].map((tb) => (
               <button key={tb} onClick={() => setTab(tb)} style={{ padding: '8px 14px', border: 0, cursor: 'pointer', background: tab === tb ? '#0f172a' : '#fff', color: tab === tb ? '#fff' : '#374151', fontSize: 13, textTransform: 'capitalize' }}>{tb}</button>
             ))}
           </div>
@@ -192,6 +274,7 @@ export default function WhatsAppConsole() {
 
       {!tenantId && <div style={{ color: '#9ca3af', padding: 24, textAlign: 'center', ...card }}>Select a tenant to begin.</div>}
       {tenantId && tab === 'messages' && <Messages tenantId={tenantId} />}
+      {tenantId && tab === 'webhooks' && <Webhooks tenantId={tenantId} />}
       {tenantId && tab === 'config' && <Config tenantId={tenantId} />}
       {tenantId && tab === 'templates' && <Templates tenantId={tenantId} />}
     </div>
