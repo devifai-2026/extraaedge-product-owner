@@ -2,6 +2,9 @@
 // (read-only, incoming + outgoing), edit its WhatsApp config/webhook, and
 // manage its message templates. PRODUCT_OWNER only (backend-gated).
 import { useEffect, useState } from 'react';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
 import { tenantsApi, platformWhatsappApi } from '../lib/endpoints';
 
 const inputStyle = { padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 };
@@ -169,36 +172,87 @@ function Webhooks({ tenantId }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dir, setDir] = useState(''); // '' | 'inbound' | 'outbound'
+  const [range, setRange] = useState('7d'); // '24h' | '7d' | 'all'
   const [expanded, setExpanded] = useState(null);
+  const [stats, setStats] = useState(null); // { hourly, daily }
+  const [chart, setChart] = useState('24h'); // which graph: '24h' | '7d'
+
+  const sinceFor = (r) => {
+    if (r === '24h') return new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    if (r === '7d') return new Date(Date.now() - 7 * 86400 * 1000).toISOString();
+    return undefined;
+  };
 
   const load = () => {
     setLoading(true);
-    platformWhatsappApi.webhookLogs(tenantId, { direction: dir || undefined, limit: 200 })
+    platformWhatsappApi.webhookLogs(tenantId, { direction: dir || undefined, since: sinceFor(range), limit: 1000 })
       .then((r) => setLogs(r?.data || []))
       .catch(() => setLogs([]))
       .finally(() => setLoading(false));
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [tenantId, dir]);
+  useEffect(() => { load(); }, [tenantId, dir, range]);
+  useEffect(() => {
+    platformWhatsappApi.webhookLogStats(tenantId).then((r) => setStats(r?.data || null)).catch(() => setStats(null));
+  }, [tenantId]);
 
   const pill = (text, bg, color) => (
     <span style={{ background: bg, color, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999 }}>{text}</span>
   );
 
+  const series = (chart === '24h' ? stats?.hourly : stats?.daily) || [];
+  const chartTotal = series.reduce((a, r) => a + (r.inbound || 0) + (r.outbound || 0), 0);
+
   return (
     <div style={{ ...card, padding: 14 }}>
+      {/* ── Activity graph ── */}
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+          <strong style={{ fontSize: 13 }}>Activity</strong>
+          <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
+            {[['24h', 'Last 24h · hourly'], ['7d', 'Last 7 days · daily']].map(([v, label]) => (
+              <button key={v} onClick={() => setChart(v)} style={{ padding: '5px 12px', border: 0, cursor: 'pointer', background: chart === v ? '#0f172a' : '#fff', color: chart === v ? '#fff' : '#374151', fontSize: 12 }}>{label}</button>
+            ))}
+          </div>
+          <span style={{ marginLeft: 'auto', display: 'flex', gap: 12, fontSize: 12, color: '#6b7280' }}>
+            <span>🟢 In</span><span>🔵 Out</span>
+          </span>
+        </div>
+        {chartTotal === 0 ? (
+          <div style={{ color: '#9ca3af', padding: 24, textAlign: 'center', fontSize: 13 }}>No activity in this range.</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={series} margin={{ top: 4, right: 10, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={16} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="inbound" name="Incoming" fill="#22c55e" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="outbound" name="Outgoing" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* ── Filters ── */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
           {[['', 'All'], ['inbound', 'Incoming'], ['outbound', 'Outgoing']].map(([v, label]) => (
             <button key={v} onClick={() => setDir(v)} style={{ padding: '6px 12px', border: 0, cursor: 'pointer', background: dir === v ? '#0f172a' : '#fff', color: dir === v ? '#fff' : '#374151', fontSize: 12 }}>{label}</button>
           ))}
         </div>
+        <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
+          {[['24h', 'Last 24h'], ['7d', 'Last 7 days'], ['all', 'All (30d)']].map(([v, label]) => (
+            <button key={v} onClick={() => setRange(v)} style={{ padding: '6px 12px', border: 0, cursor: 'pointer', background: range === v ? '#7c3aed' : '#fff', color: range === v ? '#fff' : '#374151', fontSize: 12 }}>{label}</button>
+          ))}
+        </div>
         <button onClick={load} style={{ padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 12 }}>↻ Refresh</button>
-        <span style={{ color: '#9ca3af', fontSize: 12 }}>{logs.length} events · last 30 days</span>
+        <span style={{ color: '#9ca3af', fontSize: 12 }}>{logs.length} events</span>
       </div>
 
       {loading && <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>Loading…</div>}
-      {!loading && logs.length === 0 && <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>No webhook events yet.</div>}
+      {!loading && logs.length === 0 && <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>No webhook events in this range.</div>}
 
       {!loading && logs.map((l) => {
         const isIn = l.direction === 'inbound';
