@@ -11,6 +11,7 @@ const sidebarItems = [
   { to: '/lead-inspector', label: 'Lead Inspector', icon: '🔎' },
   { to: '/feedback', label: 'User Feedback', icon: '⭐' },
   { to: '/whatsapp', label: 'WhatsApp', icon: '💬' },
+  { to: '/facebook', label: 'Facebook', icon: '📘' },
   { to: '/recorder-metrics', label: 'Recorder App', icon: '📱' },
   { to: '/plans', label: 'Plans', icon: '💼' },
   { to: '/profile', label: 'My profile', icon: '⚙️' },

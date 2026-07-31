@@ -70,6 +70,11 @@ export const platformWhatsappApi = {
   webhookLogStats: (tenantId) => api.get(`/platform/whatsapp/${tenantId}/webhook-log-stats`),
 };
 
+export const platformFacebookApi = {
+  webhookEvents: (tenantId, params) => api.get(`/platform/facebook/${tenantId}/webhook-events`, params),
+  webhookEventStats: (tenantId) => api.get(`/platform/facebook/${tenantId}/webhook-event-stats`),
+};
+
 export const plansApi = {
   list: () => api.get('/platform/plans'),
 };
