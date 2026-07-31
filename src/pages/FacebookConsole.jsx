@@ -126,8 +126,8 @@ export default function FacebookConsole() {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>📘 Facebook / Inbound Webhooks</h1>
-      <p style={{ marginTop: -8, color: '#6b7280', fontSize: 13 }}>Raw inbound webhook payloads captured for any tenant (Facebook Lead Ads bridge, LeadsBridge, generic inbound), with a 30-day activity graph.</p>
+      <h1 style={{ marginTop: 0 }}>📘 Inbound Webhooks (Facebook · JustDial)</h1>
+      <p style={{ marginTop: -8, color: '#6b7280', fontSize: 13 }}>Raw inbound webhook payloads captured for any tenant — Facebook Lead Ads bridge, JustDial (Gmail) bridge, LeadsBridge, and generic inbound — with a 30-day activity graph. Each row shows its integration name.</p>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
         <select value={tenantId} onChange={(e) => setTenantId(e.target.value)} style={inputStyle}>
           <option value="">Select tenant…</option>
