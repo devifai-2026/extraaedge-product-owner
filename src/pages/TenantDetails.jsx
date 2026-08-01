@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { tenantsApi } from '../lib/endpoints';
+import { tenantsApi, impersonationApi } from '../lib/endpoints';
+import { handoffUrl } from './Tenants';
 
 export default function TenantDetails() {
   const { id } = useParams();
@@ -8,6 +9,7 @@ export default function TenantDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('details');
+  const [entering, setEntering] = useState(false);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -17,6 +19,22 @@ export default function TenantDetails() {
   };
 
   useEffect(() => { load(); }, [id]);
+
+  // Open this tenant's admin console as their super admin — see Tenants.jsx
+  // for why the tab is opened before the await.
+  const loginAsAdmin = async () => {
+    setEntering(true);
+    const tab = window.open('', '_blank');
+    try {
+      const res = await impersonationApi.tenantAdmin(id);
+      const url = handoffUrl(res);
+      if (!url) throw new Error('No login link returned');
+      if (tab) tab.location = url; else window.location.href = url;
+    } catch (e) {
+      if (tab) tab.close();
+      alert(e.message || 'Could not open that tenant');
+    } finally { setEntering(false); }
+  };
 
   const suspend = async () => { if (!confirm(`Suspend ${tenant?.name}?`)) return; try { await tenantsApi.suspend(id); load(); } catch (e) { alert(e.message); } };
   const resume = async () => { try { await tenantsApi.resume(id); load(); } catch (e) { alert(e.message); } };
@@ -34,6 +52,16 @@ export default function TenantDetails() {
           <div style={{ color: '#6b7280', marginTop: 4 }}>{tenant.slug}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {tenant.status === 'active' && (
+            <button
+              onClick={loginAsAdmin}
+              disabled={entering}
+              title="Open this tenant's admin console as their super admin"
+              style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}
+            >
+              {entering ? 'Opening…' : 'Login as admin'}
+            </button>
+          )}
           {tenant.status === 'active' && <button onClick={suspend} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '8px 14px', borderRadius: 6, cursor: 'pointer' }}>Suspend</button>}
           {tenant.status === 'suspended' && <button onClick={resume} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', padding: '8px 14px', borderRadius: 6, cursor: 'pointer' }}>Resume</button>}
         </div>

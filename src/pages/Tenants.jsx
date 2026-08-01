@@ -1,10 +1,22 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { tenantsApi } from '../lib/endpoints';
+import { tenantsApi, impersonationApi } from '../lib/endpoints';
+import { ADMIN_WEB_URL } from '../lib/config';
 
 const statusColor = (s) => ({
   active: '#16a34a', provisioning: '#f59e0b', suspended: '#ef4444', cancelled: '#6b7280',
 }[s] || '#6b7280');
+
+// Build the admin-console handoff link from THIS app's configured admin base
+// when the backend hands back a raw code — the backend's own APP_WEB_URL is a
+// dev default in plenty of deployments. handoff_url is the fallback.
+export const handoffUrl = (res) => {
+  const d = res?.data ?? res;
+  if (d?.handoff_code) {
+    return `${String(ADMIN_WEB_URL).replace(/\/+$/, '')}/sudo?code=${encodeURIComponent(d.handoff_code)}`;
+  }
+  return d?.handoff_url || null;
+};
 
 export default function Tenants() {
   const navigate = useNavigate();
@@ -13,6 +25,7 @@ export default function Tenants() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
+  const [enteringId, setEnteringId] = useState(null);
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -29,6 +42,28 @@ export default function Tenants() {
   useEffect(() => { load(); }, [load]);
 
   const totalPages = Math.max(1, Math.ceil((meta.total || 0) / limit));
+
+  // Open the tenant's own admin console as their super admin. The backend
+  // resolves the target account, records an impersonation session, and hands
+  // back a single-use URL — the console never sees a tenant password.
+  //
+  // The new tab is opened synchronously (before the await) because popup
+  // blockers reject window.open once the click's user-gesture context is gone.
+  const loginAsAdmin = async (t) => {
+    setEnteringId(t.id);
+    const tab = window.open('', '_blank');
+    try {
+      const res = await impersonationApi.tenantAdmin(t.id);
+      const url = handoffUrl(res);
+      if (!url) throw new Error('No login link returned');
+      if (tab) tab.location = url; else window.location.href = url;
+    } catch (e) {
+      if (tab) tab.close();
+      alert(e.message || 'Could not open that tenant');
+    } finally {
+      setEnteringId(null);
+    }
+  };
 
   const suspend = async (id) => { try { await tenantsApi.suspend(id); load(); } catch (e) { alert(e.message); } };
   const resume = async (id) => { try { await tenantsApi.resume(id); load(); } catch (e) { alert(e.message); } };
@@ -83,6 +118,16 @@ export default function Tenants() {
                   </td>
                   <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: 12 }}>{t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}</td>
                   <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                    {t.status === 'active' && (
+                      <button
+                        onClick={() => loginAsAdmin(t)}
+                        disabled={enteringId === t.id}
+                        title="Open this tenant's admin console as their super admin"
+                        style={{ background: 'transparent', color: '#2563eb', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginRight: 12 }}
+                      >
+                        {enteringId === t.id ? 'Opening…' : 'Login as admin'}
+                      </button>
+                    )}
                     {t.status === 'active' && <button onClick={() => suspend(t.id)} style={{ background: 'transparent', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: 13, marginRight: 12 }}>Suspend</button>}
                     {t.status === 'suspended' && <button onClick={() => resume(t.id)} style={{ background: 'transparent', color: '#16a34a', border: 'none', cursor: 'pointer', fontSize: 13, marginRight: 12 }}>Resume</button>}
                     {t.status !== 'cancelled' && (

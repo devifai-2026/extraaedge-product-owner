@@ -21,6 +21,15 @@ export const tenantsApi = {
   orgTree: (id) => api.get(`/platform/tenants/${id}/org-tree`),
 };
 
+// Impersonation. tenantAdmin() starts an audited session as the tenant's own
+// super admin and returns a one-time URL into their admin console — no
+// password, and nothing replayable is stored server-side.
+export const impersonationApi = {
+  tenantAdmin: (tenant_id, reason) =>
+    api.post('/platform/impersonate/tenant-admin', reason ? { tenant_id, reason } : { tenant_id }),
+  sessions: (params) => api.get('/platform/impersonate/sessions', params),
+};
+
 export const platformUsersApi = {
   list: (params) => api.get('/platform/users', params),
   create: (body) => api.post('/platform/users', body),

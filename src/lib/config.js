@@ -12,6 +12,13 @@ export const API_BASE =
     ? 'https://admissioncrm.live/api/v1'
     : 'http://localhost:4000/api/v1');
 
+// Tenant admin console. Used to build the "Login as admin" handoff URL, so
+// the link works even where the backend's APP_WEB_URL points somewhere else
+// (it defaults to a localhost dev server). Override with VITE_ADMIN_WEB_URL.
+export const ADMIN_WEB_URL =
+  env.VITE_ADMIN_WEB_URL
+  || (isProd ? 'https://extraaedge-admin.onrender.com' : 'http://localhost:5173');
+
 // Grafana observability service (embedded in the Analytics page). Override at
 // build time with VITE_GRAFANA_URL; falls back to the Render service URL in
 // prod and localhost in dev. Empty string → the Analytics page shows a setup
