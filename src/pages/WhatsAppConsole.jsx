@@ -68,9 +68,9 @@ function Config({ tenantId }) {
   useEffect(() => {
     platformWhatsappApi.settings(tenantId).then((r) => {
       const d = r?.data || {};
-      setForm({ enabled: !!d.enabled, app_key: d.app_key || '', auth_key: d.auth_key || '', device_id: d.device_id || '', business_phone: d.business_phone || '' });
+      setForm({ enabled: !!d.enabled, app_key: d.app_key || '', auth_key: d.auth_key || '', device_id: d.device_id || '', business_phone: d.business_phone || '', template_otp: d.template_otp || '' });
       setWebhook(d.webhook_url || '');
-    }).catch(() => setForm({ enabled: false, app_key: '', auth_key: '', device_id: '', business_phone: '' }));
+    }).catch(() => setForm({ enabled: false, app_key: '', auth_key: '', device_id: '', business_phone: '', template_otp: '' }));
   }, [tenantId]);
 
   const save = async () => {
@@ -85,7 +85,7 @@ function Config({ tenantId }) {
     setBusy(true); setMsg('');
     try {
       await platformWhatsappApi.deleteSettings(tenantId);
-      setForm({ enabled: false, app_key: '', auth_key: '', device_id: '', business_phone: '' });
+      setForm({ enabled: false, app_key: '', auth_key: '', device_id: '', business_phone: '', template_otp: '' });
       setMsg('Config deleted ✓');
     } catch (e) { setMsg(e.message || 'Delete failed'); }
     finally { setBusy(false); }
@@ -103,6 +103,10 @@ function Config({ tenantId }) {
         <input style={inputStyle} placeholder="WABridge Auth Key (leave •••• to keep)" value={form.auth_key} onChange={set('auth_key')} />
         <input style={inputStyle} placeholder="WABridge Device ID" value={form.device_id} onChange={set('device_id')} />
         <input style={inputStyle} placeholder="Business WhatsApp number (91…)" value={form.business_phone} onChange={set('business_phone')} />
+        {/* Login OTPs are sent with this template. Template ids are per
+            WABridge account, so this must be one THIS tenant owns — a foreign
+            id comes back as a 400 from WABridge. Blank = platform default. */}
+        <input style={inputStyle} placeholder="Login OTP template id (blank = platform default)" value={form.template_otp} onChange={set('template_otp')} />
       </div>
       <div style={{ marginTop: 14 }}>
         <button onClick={save} disabled={busy} style={{ padding: '8px 16px', background: '#0f172a', color: '#fff', border: 0, borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>{busy ? 'Saving…' : 'Save config'}</button>
