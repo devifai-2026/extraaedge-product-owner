@@ -153,9 +153,10 @@ export default function RecorderMetrics() {
             </div>
             {(t.devices ?? []).length === 0 ? (
               <div style={{ fontSize: 13, color: '#94a3b8' }}>
-                No device has reported in yet. Devices appear here once they are running app v1.2 or later.
+                Nothing yet — phones appear here within 15 minutes of updating to app v1.2.
               </div>
             ) : (
+              <div style={{ overflowX: 'auto' }}>
               <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                 <thead>
                   <tr>
@@ -219,15 +220,27 @@ export default function RecorderMetrics() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
-              Phones have no push channel, so a pull is collected on the device&apos;s next check-in — up to 15 minutes.
-              A greyed-out permission is switched off on that handset and has to be re-granted there.
-            </div>
+            {/* Only worth saying once there's something to say it about. With
+                zero devices this was two lines of instructions for a table
+                that isn't there. */}
+            {(t.devices ?? []).length > 0 && (
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
+                Phones have no push channel, so a pull is collected on the device&apos;s next check-in — up to 15 minutes.
+                A greyed-out permission is switched off on that handset and has to be re-granted there.
+              </div>
+            )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, marginTop: 16 }}>
-            <div>
+          {/* minWidth:0 lets the track actually shrink, and overflowX on each
+              child keeps a too-wide table INSIDE its own column. Without the
+              second part, th/td being `nowrap` means the table's min-content
+              width blows straight past the track and paints over the column
+              next to it — which is what made "Uploads by sign-up number" land
+              on top of the accounts table. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, marginTop: 16, alignItems: 'start' }}>
+            <div style={{ minWidth: 0, overflowX: 'auto' }}>
               <div style={{ fontSize: 13, fontWeight: 600, margin: '8px 0' }}>
                 APK accounts ({t.accounts.length})
               </div>
@@ -252,7 +265,7 @@ export default function RecorderMetrics() {
               )}
             </div>
 
-            <div>
+            <div style={{ minWidth: 0, overflowX: 'auto' }}>
               <div style={{ fontSize: 13, fontWeight: 600, margin: '8px 0' }}>
                 Uploads by sign-up number ({t.uploaders.reduce((s, u) => s + u.rows_inserted, 0)} rows)
               </div>
