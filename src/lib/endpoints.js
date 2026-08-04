@@ -91,6 +91,11 @@ export const plansApi = {
 // Recorder-app rollout: APK account setups + per-number upload counts.
 export const recorderMetricsApi = {
   get: () => api.get('/platform/recorder-metrics'),
+  // Ask a specific handset to upload everything it has. These phones have no
+  // push channel, so this only stamps a request — the device collects it on
+  // its next heartbeat (up to ~15 min) and reports the result back.
+  requestSync: (tenantId, deviceId) =>
+    api.post(`/platform/recorder-metrics/tenants/${tenantId}/devices/${deviceId}/request-sync`),
 };
 
 export const supportTicketsApi = {

@@ -21,11 +21,66 @@ const fmtDay = (v) => {
 };
 const fmtHour = (h) => `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? 'AM' : 'PM'}`;
 
+// A phone that hasn't checked in for a day is the signal something is wrong —
+// the app heartbeats every 15 minutes, so a gap this size is never normal.
+const STALE_MS = 24 * 60 * 60 * 1000;
+const isStale = (lastSeen) => !lastSeen || (Date.now() - new Date(lastSeen).getTime()) > STALE_MS;
+
+// Only the permissions that can actually be OFF. INTERNET, FOREGROUND_SERVICE
+// and RECEIVE_BOOT_COMPLETED are install-time grants that are always held, so
+// rendering them would be permanently-green noise burying the real ones.
+const PERMISSIONS = [
+  // First because it's the one that matters: without All-files access the
+  // scanner finds nothing, and the app looks perfectly healthy while
+  // uploading nothing at all.
+  { key: 'all_files', label: 'All files' },
+  { key: 'notifications', label: 'Notifications' },
+  { key: 'battery_unrestricted', label: 'Battery' },
+];
+
+const chip = (granted) => ({
+  display: 'inline-block',
+  padding: '2px 8px',
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 600,
+  marginRight: 4,
+  background: granted ? '#dcfce7' : '#f1f5f9',
+  color: granted ? '#166534' : '#94a3b8',
+  border: `1px solid ${granted ? '#bbf7d0' : '#e2e8f0'}`,
+});
+
+// Where a requested pull has got to. The device may be offline, so "asked for"
+// and "done" are genuinely different states and collapsing them would make the
+// button look broken during the normal wait.
+const syncState = (d) => {
+  if (!d.sync_requested_at) return null;
+  if (d.sync_completed_at && new Date(d.sync_completed_at) >= new Date(d.sync_requested_at)) {
+    const r = d.sync_result || {};
+    return { tone: '#166534', bg: '#dcfce7', text: `Pulled ${r.uploaded ?? 0} of ${r.scanned ?? 0}` };
+  }
+  if (d.sync_started_at) return { tone: '#1e40af', bg: '#dbeafe', text: 'Phone is uploading…' };
+  return { tone: '#92400e', bg: '#fef3c7', text: 'Waiting for the phone' };
+};
+
 export default function RecorderMetrics() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [openDaily, setOpenDaily] = useState({}); // slug -> bool
+  const [pulling, setPulling] = useState({});      // device id -> bool
+
+  const requestPull = async (tenantId, device) => {
+    setPulling((p) => ({ ...p, [device.id]: true }));
+    try {
+      await recorderMetricsApi.requestSync(tenantId, device.id);
+      await load();
+    } catch (e) {
+      setError(e?.message || 'Could not reach that device');
+    } finally {
+      setPulling((p) => ({ ...p, [device.id]: false }));
+    }
+  };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -61,6 +116,15 @@ export default function RecorderMetrics() {
       {totals && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
           <div style={kpi}><div style={{ fontSize: 12, color: '#64748b' }}>APK accounts set up</div><div style={{ fontSize: 26, fontWeight: 700 }}>{totals.app_accounts}</div></div>
+          {/* Healthy = checked in today AND holding All-files access. The gap
+              between this and the total is the list of phones to chase, which
+              is the only number worth putting at the top. */}
+          <div style={kpi}>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Devices healthy</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: totals.devices && totals.devices_healthy < totals.devices ? '#b45309' : undefined }}>
+              {totals.devices_healthy}<span style={{ fontSize: 15, color: '#94a3b8' }}> / {totals.devices}</span>
+            </div>
+          </div>
           <div style={kpi}><div style={{ fontSize: 12, color: '#64748b' }}>Recordings uploaded</div><div style={{ fontSize: 26, fontWeight: 700 }}>{totals.rows_inserted}</div></div>
           <div style={kpi}><div style={{ fontSize: 12, color: '#64748b' }}>Tenants configured</div><div style={{ fontSize: 26, fontWeight: 700 }}>{totals.tenants_configured}<span style={{ fontSize: 14, color: '#94a3b8' }}> / {totals.tenants}</span></div></div>
         </div>
@@ -83,7 +147,86 @@ export default function RecorderMetrics() {
 
           {t.error && <div style={{ color: '#dc2626', fontSize: 13 }}>Tenant DB error: {t.error}</div>}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16 }}>
+          <div style={{ marginTop: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, margin: '8px 0' }}>
+              Devices ({(t.devices ?? []).length})
+            </div>
+            {(t.devices ?? []).length === 0 ? (
+              <div style={{ fontSize: 13, color: '#94a3b8' }}>
+                No device has reported in yet. Devices appear here once they are running app v1.2 or later.
+              </div>
+            ) : (
+              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th style={th}>Phone</th>
+                    <th style={th}>Used by</th>
+                    <th style={th}>Android</th>
+                    <th style={th}>App</th>
+                    <th style={th}>Permissions</th>
+                    <th style={th}>Last seen</th>
+                    <th style={th}>Recordings pull</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(t.devices ?? []).map((d) => {
+                    const stale = isStale(d.last_seen_at);
+                    const st = syncState(d);
+                    return (
+                      <tr key={d.id} style={stale ? { background: '#fffbeb' } : undefined}>
+                        <td style={td}>
+                          {[d.manufacturer, d.model].filter(Boolean).join(' ') || 'Unknown device'}
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{String(d.device_id).slice(0, 8)}…</div>
+                        </td>
+                        <td style={td}>
+                          {d.user_name || '—'}
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{d.user_phone || ''}</div>
+                        </td>
+                        <td style={td}>{d.os_version || '—'}</td>
+                        <td style={td}>{d.app_version || '—'}</td>
+                        <td style={td}>
+                          {PERMISSIONS.map((p) => (
+                            <span key={p.key} style={chip(d.permissions?.[p.key] === true)}>{p.label}</span>
+                          ))}
+                        </td>
+                        <td style={{ ...td, color: stale ? '#b45309' : undefined, fontWeight: stale ? 600 : undefined }}>
+                          {fmtDate(d.last_seen_at)}
+                          {stale && <div style={{ fontSize: 11 }}>not checking in</div>}
+                        </td>
+                        <td style={td}>
+                          <button
+                            type="button"
+                            onClick={() => requestPull(t.tenant_id, d)}
+                            disabled={pulling[d.id]}
+                            style={{
+                              padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
+                              border: '1px solid #cbd5e1', background: '#fff',
+                            }}
+                          >
+                            {pulling[d.id] ? 'Asking…' : 'Pull recordings'}
+                          </button>
+                          {st && (
+                            <div style={{
+                              marginTop: 4, display: 'inline-block', padding: '2px 8px', borderRadius: 999,
+                              fontSize: 11, fontWeight: 600, background: st.bg, color: st.tone,
+                            }}>
+                              {st.text}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
+              Phones have no push channel, so a pull is collected on the device&apos;s next check-in — up to 15 minutes.
+              A greyed-out permission is switched off on that handset and has to be re-granted there.
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, marginTop: 16 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, margin: '8px 0' }}>
                 APK accounts ({t.accounts.length})
