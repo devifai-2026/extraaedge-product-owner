@@ -1,13 +1,21 @@
 // Recorder App metrics — per tenant: which counsellors set up the Android
-// recorder APK (mobile-OTP logins) and, per sign-up number, how many
-// device_recordings rows each daily sync inserted.
+// recorder APK (mobile-OTP logins), per sign-up number how many
+// device_recordings rows each daily sync inserted, and a day-by-day
+// matched/unmatched trend so a dip is visible at a glance instead of buried
+// in a table.
 import { useEffect, useState } from 'react';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
 import { recorderMetricsApi } from '../lib/endpoints';
 
-const card = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16, marginBottom: 16 };
+const card = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, marginBottom: 18, boxShadow: '0 1px 2px rgba(16,24,40,0.04)' };
 const th = { textAlign: 'left', padding: '8px 10px', fontSize: 12, color: '#64748b', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' };
 const td = { padding: '8px 10px', fontSize: 13, borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' };
-const kpi = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 18px', minWidth: 160 };
+const kpi = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 18px', minWidth: 160, boxShadow: '0 1px 2px rgba(16,24,40,0.04)' };
+
+// Same palette the rest of the PO console's charts use (MetricsDashboard.jsx).
+const CHART_COLORS = { matched: '#16a34a', unmatched: '#d97706', multi: '#2563eb' };
 
 const fmtDate = (v) => {
   if (!v) return '—';
@@ -49,6 +57,46 @@ const chip = (granted) => ({
   color: granted ? '#166534' : '#94a3b8',
   border: `1px solid ${granted ? '#bbf7d0' : '#e2e8f0'}`,
 });
+
+// Stale-first: the devices someone needs to chase belong at the top of the
+// table, not sorted to the bottom by "most recently seen" like the API
+// returns them. Within each bucket, most-recently-seen still sorts first.
+const sortDevicesByAttention = (devices) => {
+  const rank = (d) => (isStale(d.last_seen_at) ? 0 : 1);
+  return [...(devices ?? [])].sort((a, b) => {
+    const r = rank(a) - rank(b);
+    if (r !== 0) return r;
+    return new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0);
+  });
+};
+
+// Collapse the per-day/counsellor/device rows into one point per day (last
+// 14 days, oldest first for a left-to-right chart), padding in zero-days so
+// a quiet day reads as "nothing happened" rather than vanishing from the
+// x-axis entirely.
+const buildDailyTrend = (daily) => {
+  const byDay = new Map();
+  for (const r of daily ?? []) {
+    const key = String(r.day).slice(0, 10);
+    const cur = byDay.get(key) || { matched: 0, unmatched: 0, multi: 0 };
+    cur.matched += r.matched ?? 0;
+    cur.unmatched += r.unmatched ?? 0;
+    cur.multi += r.multi ?? 0;
+    byDay.set(key, cur);
+  }
+  const out = [];
+  for (let i = 13; i >= 0; i -= 1) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const bucket = byDay.get(key) || { matched: 0, unmatched: 0, multi: 0 };
+    out.push({
+      day: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+      ...bucket,
+    });
+  }
+  return out;
+};
 
 // Where a requested pull has got to. The device may be offline, so "asked for"
 // and "done" are genuinely different states and collapsing them would make the
@@ -134,10 +182,23 @@ export default function RecorderMetrics() {
         <div style={{ color: '#64748b' }}>No recorder-app activity on any tenant yet.</div>
       )}
 
-      {tenants.map((t) => (
+      {tenants.map((t) => {
+        const devices = sortDevicesByAttention(t.devices);
+        const attentionCount = devices.filter((d) => isStale(d.last_seen_at)).length;
+        const trend = buildDailyTrend(t.daily);
+        const hasTrendData = trend.some((p) => p.matched + p.unmatched + p.multi > 0);
+        return (
         <div key={t.slug} style={card}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
             <h2 style={{ margin: 0, fontSize: 16 }}>{t.name} <span style={{ color: '#94a3b8', fontWeight: 400 }}>({t.slug})</span></h2>
+            {attentionCount > 0 && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999,
+                background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a',
+              }}>
+                {attentionCount} device{attentionCount === 1 ? '' : 's'} need attention
+              </span>
+            )}
             <span style={{ fontSize: 12, color: '#64748b', marginLeft: 'auto' }}>
               {t.recorder_folder_path
                 ? <>📁 {t.recorder_folder_path} · daily {fmtHour(t.recorder_sync_hour)}</>
@@ -147,11 +208,29 @@ export default function RecorderMetrics() {
 
           {t.error && <div style={{ color: '#dc2626', fontSize: 13 }}>Tenant DB error: {t.error}</div>}
 
+          {hasTrendData && (
+            <div style={{ marginTop: 10, marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, margin: '8px 0' }}>Uploads — last 14 days</div>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={trend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="matched" name="Matched" stackId="a" fill={CHART_COLORS.matched} radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="unmatched" name="Unmatched" stackId="a" fill={CHART_COLORS.unmatched} radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="multi" name="Multi-match" stackId="a" fill={CHART_COLORS.multi} radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
           <div style={{ marginTop: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 600, margin: '8px 0' }}>
-              Devices ({(t.devices ?? []).length})
+              Devices ({devices.length})
             </div>
-            {(t.devices ?? []).length === 0 ? (
+            {devices.length === 0 ? (
               <div style={{ fontSize: 13, color: '#94a3b8' }}>
                 Nothing yet — phones appear here within 15 minutes of updating to app v1.2.
               </div>
@@ -170,7 +249,7 @@ export default function RecorderMetrics() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(t.devices ?? []).map((d) => {
+                  {devices.map((d) => {
                     const stale = isStale(d.last_seen_at);
                     const st = syncState(d);
                     return (
@@ -225,7 +304,7 @@ export default function RecorderMetrics() {
             {/* Only worth saying once there's something to say it about. With
                 zero devices this was two lines of instructions for a table
                 that isn't there. */}
-            {(t.devices ?? []).length > 0 && (
+            {devices.length > 0 && (
               <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
                 Phones have no push channel, so a pull is collected on the device&apos;s next check-in — up to 15 minutes.
                 A greyed-out permission is switched off on that handset and has to be re-granted there.
@@ -301,23 +380,42 @@ export default function RecorderMetrics() {
                 {openDaily[t.slug] ? '▾ Hide' : '▸ Show'} daily sync log (last 14 days)
               </button>
               {openDaily[t.slug] && (
+                <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', marginTop: 8 }}>
-                  <thead><tr><th style={th}>Day</th><th style={th}>Number</th><th style={th}>Rows inserted</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th style={th}>Day</th>
+                      <th style={th}>Counsellor</th>
+                      <th style={th}>Number</th>
+                      <th style={th}>Device</th>
+                      <th style={th}>Total</th>
+                      <th style={th}>Matched</th>
+                      <th style={th}>Unmatched</th>
+                      <th style={th}>Multi</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {t.daily.map((d, i) => (
                       <tr key={i}>
                         <td style={td}>{fmtDay(d.day)}</td>
+                        <td style={td}>{d.user_name || '—'}</td>
                         <td style={td}>{d.uploader_phone}</td>
-                        <td style={td}>{d.rows_inserted}</td>
+                        <td style={td}>{d.device_id ? `${String(d.device_id).slice(0, 8)}…` : '—'}</td>
+                        <td style={{ ...td, fontWeight: 600 }}>{d.rows_inserted}</td>
+                        <td style={{ ...td, color: '#166534' }}>{d.matched ?? 0}</td>
+                        <td style={{ ...td, color: '#92400e' }}>{d.unmatched ?? 0}</td>
+                        <td style={{ ...td, color: '#1e40af' }}>{d.multi ?? 0}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
