@@ -12,9 +12,16 @@ export default function Profile() {
 
   const submit = async (e) => {
     e.preventDefault();
-    setMsg(''); setErr(''); setSubmitting(true);
+    setMsg(''); setErr('');
+    // Mirrors changePasswordSchema on the server, so the rule is stated up
+    // front rather than after a round-trip.
+    if (newPassword.length < 10) { setErr('New password must be at least 10 characters.'); return; }
+    setSubmitting(true);
     try {
-      await api.post('/auth/change-password', { old_password: oldPassword, new_password: newPassword });
+      // The server's schema is { current_password, new_password }. This sent
+      // `old_password`, so zod rejected every attempt before it reached the
+      // handler — the form could never have worked.
+      await api.post('/auth/change-password', { current_password: oldPassword, new_password: newPassword });
       setMsg('Password updated. You may be asked to log in again.');
       setOldPassword(''); setNewPassword('');
     } catch (e) {
@@ -40,7 +47,7 @@ export default function Profile() {
         <form onSubmit={submit}>
           <input type="password" placeholder="Current password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} required
             style={{ width: '100%', padding: 10, marginBottom: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
-          <input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required
+          <input type="password" placeholder="New password (min 10 characters)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={10}
             style={{ width: '100%', padding: 10, marginBottom: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
           {msg && <div style={{ color: '#16a34a', fontSize: 13, marginBottom: 8 }}>{msg}</div>}
           {err && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{err}</div>}
