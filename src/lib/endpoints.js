@@ -19,6 +19,14 @@ export const tenantsApi = {
   delete: (id) => api.delete(`/platform/tenants/${id}`),
   // Org hierarchy of the tenant — owner → managers → counsellors as a tree.
   orgTree: (id) => api.get(`/platform/tenants/${id}/org-tree`),
+  // How this tenant's users sign in: 'otp' | 'password' | 'both'.
+  setAuthMode: (id, auth_mode) => api.put(`/platform/tenants/${id}/auth-mode`, { auth_mode }),
+  // The tenant's super admin + whether a password is currently set. Never
+  // returns the hash — there is no stored plaintext to show.
+  admin: (id) => api.get(`/platform/tenants/${id}/admin`),
+  // Set or rotate that admin's password. Omit `password` to have the server
+  // generate one. The plaintext comes back ONCE and cannot be re-read.
+  setAdminPassword: (id, password) => api.post(`/platform/tenants/${id}/admin/password`, password ? { password } : {}),
 };
 
 // Impersonation. tenantAdmin() starts an audited session as the tenant's own
